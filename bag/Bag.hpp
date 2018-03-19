@@ -33,7 +33,7 @@ void Bag<T>::add(T element){
 
 Bag* Bag::split(){
     Bag bag = new Bag();
-    Pennant y = pennantVector[0];
+    Pennant<T> y = pennantVector[0];
     pennantVector[0] = NULL;
     for(int k = 1; k < pennantVector.size(); k++){
         if(pennantVector[k] != NULL){
@@ -51,14 +51,14 @@ Bag* Bag::split(){
 }
 
 void Bag::union(Bag bag){
-    Pennant y = new Pennant();
+    Pennant<T> y = new Pennant<T>();
     for (int k = 0; k < pennantVector.size(); k++){
         FA(pennantVector[k], bag->pennantVector[k], y);
     }
 }
 
 //helper function for union. Full-adder function
-void FA(Pennant *x, Pennant *y, Pennant *z) {
+void FA(Pennant<T> *x, Pennant<T> *y, Pennant<T> *z) {
     
     if(z == NULL && y!= NULL && x != NULL) {
         x->merge(y);
