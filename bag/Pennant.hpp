@@ -20,6 +20,7 @@ public:
     static Pennant* merge(Pennant<T>*& a, Pennant<T>*& b);
     //Pennant split();
     ~Pennant();
+    vector<int> dumpVertices();
 };
 
 template <typename T>

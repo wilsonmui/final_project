@@ -14,6 +14,7 @@ public:
     void union(Bag bag);
     Bag* split();
     int getPennantVectorSize(){return pennantVector.size();}
+    vector<T> toVector();
 };
 
 template <typename T>
@@ -57,6 +58,14 @@ void Bag::union(Bag bag){
     }
 }
 
+vector<T> Bag::toVector(){
+    vector<T> vect;
+    for (int i=0; i < pennantVector.getPennantVectorSize(); i++){
+        vector<T> temp = pennantVector[i].toVector();
+        vect.insert(vect.end(), temp.begin(), temp.end());
+    }
+}
+
 //helper function for union. Full-adder function
 void FA(Pennant<T> *x, Pennant<T> *y, Pennant<T> *z) {
     
@@ -80,3 +89,5 @@ void FA(Pennant<T> *x, Pennant<T> *y, Pennant<T> *z) {
         z = y;
     }
 }
+
+
