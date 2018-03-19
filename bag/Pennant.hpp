@@ -35,6 +35,7 @@ Pennant<T>* Pennant<T>::merge(Pennant<T>*& a, Pennant<T>*& b){
     a->rootNode = NULL;
     newPennant->rootNode->right = b->rootNode;
     b->rootNode = NULL;
+    newPennant->treeHeight = a->treeHeight+1;
 
     delete a;
     delete b;
