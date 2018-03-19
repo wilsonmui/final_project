@@ -1,15 +1,13 @@
-#include "Pennant.h"
+#pragma once
 
+#include "Pennant.hpp"
+#include <vector>
+
+template <typename T>
 class Bag{
-    int size;
-    Pennant **point;
+    std::vector<Pennant<T> *> pennantVector;
     
     Bag();
-    Bag(int n);
-    void add(Pennant* pennant);
-    union(Bag bag);
+    void add(T element);
     Bag* split();
-    Bag* divide();
-    ~Bag();
-    
-}
+};
