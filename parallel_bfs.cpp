@@ -5,7 +5,11 @@
 #include<cilk/cilk.h>
 #include <list>
 #include <iterator>
+#include <iostream>
+#include <cilk/reducer_list.h>
+#include <string>
 
+using namespace std;
 
 const int GRAINSIZE = 100;
 
@@ -26,7 +30,7 @@ int read_edge_list (int **tailp, int **headp) {
     nr = scanf("%i %i",&t,&h);
     while (nr == 2) {
         if (nedges >= max_edges) {
-            printf("Limit of %d edges exceeded.\n",max_edges);
+            //printf("Limit of %d edges exceeded.\n",max_edges);
             exit(1);
         }
         (*tailp)[nedges] = t;
@@ -75,19 +79,20 @@ void print_CSR_graph (graph *G) {
     int vlimit = 20;
     int elimit = 50;
     int e,v;
-    printf("\nGraph has %d vertices and %d edges.\n",G->nv,G->ne);
-    printf("firstnbr =");
+    //printf("\nGraph has %d vertices and %d edges.\n",G->nv,G->ne);
+    //printf("firstnbr =");
     if (G->nv < vlimit) vlimit = G->nv;
-    for (int v = 0; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
-    if (G->nv > vlimit) printf(" ...");
-    printf("\n");
-    printf("nbr =");
+    //for (int v = 0; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
+    //if (G->nv > vlimit) printf(" ...");
+    //printf("\n");
+    //printf("nbr =");
     if (G->ne < elimit) elimit = G->ne;
-    for (int e = 0; e < elimit; e++) printf(" %d",G->nbr[e]);
-    if (G->ne > elimit) printf(" ...");
-    printf("\n\n");
+    //for (int e = 0; e < elimit; e++) printf(" %d",G->nbr[e]);
+    //if (G->ne > elimit) printf(" ...");
+    //printf("\n\n");
 }
 
+/*
 //sequential bfs for reference
 void bfs (int s, graph *G, int **levelp, int *nlevelsp,
           int **levelsizep, int **parentp) {
@@ -132,22 +137,30 @@ void bfs (int s, graph *G, int **levelp, int *nlevelsp,
     *nlevelsp = thislevel;
     free(queue);
 }
+*/
 
-void process_layer(list<int> *in_bag, list<int> *out_bag, int d, int *level, int *parent){
+void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, int *parent, graph *G){
     
-    if(in_bag.size() < GRAINSIZE){
-        list<int>::iterator iter;
-        cilk_for (iter = in_bag.begin(); iter != in_bag.end(); iter++){
+    if(in_bag->size() < GRAINSIZE){
+        cilk::reducer< cilk::op_list_append<int> > new_frontier;
+        cilk_for (list<int>::iterator iter=in_bag->begin(); iter != *in_bag.end(); ++iter){
             //if distance of v is -1, make v distance = d+1 and insert to out_bag
-            
-            
+            for(int e = G->firstnbr[*iter]; e < G->firstnbr[*iter+1]; e++){
+                int w = G->nbr[e];
+                if (level[w] == -1) {   // w has not already been reached
+                    parent[w] = *iter;
+                    level[w] = d+1;
+                    new_frontier->push_back(w);    // put w on queue to explore
+                }
+            }
         }
+        *out_bag = new_frontier.get_value();
         return;
     }
     list<int> new_bag;
-    new_bag.splice(new_bag.begin(), in_bag, in_bag.begin(), next( in_bag.begin(), in_bag.size()/2));
-    cilk_spawn process_layer(new_bag, out_bag, d);
-    process_layer(in_bag, out_bag, d);
+    new_bag->splice(new_bag->begin(), in_bag, in_bag->begin(), advance( in_bag->begin(), in_bag->size()/2));
+    cilk_spawn process_layer(&new_bag, out_bag, d, level, parent, G);
+    process_layer(in_bag, out_bag, d, level, parent, G);
     cilk_sync;
 }
 
@@ -159,24 +172,23 @@ void pbfs(int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **
     levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
     parent = *parentp = (int *) calloc(G->nv, sizeof(int));
 
-    for (v = 0; v < G->nv; v++) level[v] = -1;
-    for (v = 0; v < G->nv; v++) parent[v] = -1;
+    for (int v = 0; v < G->nv; v++) level[v] = -1;
+    for (int v = 0; v < G->nv; v++) parent[v] = -1;
     
     // assign the starting vertex level 0
     level[s] = 0;
     levelsize[0] = 1;
     
     //store the vertices
-    list<int> frontier = new list<int>;
+    list<int> frontier;
     frontier.push_back(s);
-    bags.push_back(frontier);
     
 
     while(frontier.size() > 0){
         //reducer
-        cilk::reducer< cilk::op_list_append<int> > new_frontier;
-        process_layer(frontier, new_frontier, d, level, parent);
-        frontier = new_frontier.get_value();
+        list<int> new_frontier;
+        process_layer(&frontier, &new_frontier, d, level, parent, G);
+        frontier = new_frontier;
         levelsize[d] = frontier.size();
         d++;
     }
@@ -197,8 +209,8 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         startvtx = atoi (argv[1]);
     } else {
-        printf("usage:   bagbfs <startvtx> < <edgelistfile>\n");
-        printf("example: cat sample.txt | ./bfstest 1\n");
+        //printf("usage:   bagbfs <startvtx> < <edgelistfile>\n");
+        //printf("example: cat sample.txt | ./bfstest 1\n");
         exit(1);
     }
     nedges = read_edge_list (&tail, &head);
@@ -207,19 +219,19 @@ int main (int argc, char* argv[]) {
     free(head);
     print_CSR_graph (G);
     
-    printf("Starting vertex for BFS is %d.\n\n",startvtx);
+    //printf("Starting vertex for BFS is %d.\n\n",startvtx);
     pbfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
     
     reached = 0;
     for (int i = 0; i < nlevels; i++) reached += levelsize[i];
-    printf("Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
-           startvtx, nlevels, reached);
-    for (int i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
+    //printf("Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
+    //       startvtx, nlevels, reached);
+    //for (int i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
     if (G->nv < 20) {
-        printf("\n  vertex parent  level\n");
-        for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+    //    printf("\n  vertex parent  level\n");
+    //    for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
     }
-    printf("\n");
+   // printf("\n");
 }
 
 
