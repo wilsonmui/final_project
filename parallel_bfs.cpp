@@ -3,9 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include<cilk/cilk.h>
+#include <list>
+#include <iterator>
 
-#include "Bag.hpp"
-#include "Pennant.hpp"
 
 const int GRAINSIZE = 100;
 
@@ -88,18 +88,64 @@ void print_CSR_graph (graph *G) {
     printf("\n\n");
 }
 
-void process_layer(Bag *in_bag, Bag *out_bag, d){
+//sequential bfs for reference
+void bfs (int s, graph *G, int **levelp, int *nlevelsp,
+          int **levelsizep, int **parentp) {
+    int *level, *levelsize, *parent;
+    int thislevel;
+    int *queue, back, front;
+    int i, v, w, e;
+    level = *levelp = (int *) calloc(G->nv, sizeof(int));
+    levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
+    parent = *parentp = (int *) calloc(G->nv, sizeof(int));
+    queue = (int *) calloc(G->nv, sizeof(int));
     
-    if(in_bag.getPennantVectorSize < GRAINSIZE){
-        for (int i=0; i<in_bag.getPennantVectorSize(); i++){
-            vector<int> vertices = in_bag[i].dumpVertices();
-            cilk_for (int k = 0; k < vertices.size(); k++){
-                //if distance of v is -1, make v distance = d+1 and insert to out_bag
+    // initially, queue is empty, all levels and parents are -1
+    back = 0;   // position next element will be added to queue
+    front = 0;  // position next element will be removed from queue
+    for (v = 0; v < G->nv; v++) level[v] = -1;
+    for (v = 0; v < G->nv; v++) parent[v] = -1;
+    
+    // assign the starting vertex level 0 and put it on the queue to explore
+    thislevel = 0;
+    level[s] = 0;
+    levelsize[0] = 1;
+    queue[back++] = s;
+    
+    // loop over levels, then over vertices at this level, then over neighbors
+    while (levelsize[thislevel] > 0) {
+        levelsize[thislevel+1] = 0;
+        for (i = 0; i < levelsize[thislevel]; i++) {
+            v = queue[front++];       // v is the current vertex to explore from
+            for (e = G->firstnbr[v]; e < G->firstnbr[v+1]; e++) {
+                w = G->nbr[e];          // w is the current neighbor of v
+                if (level[w] == -1) {   // w has not already been reached
+                    parent[w] = v;
+                    level[w] = thislevel+1;
+                    levelsize[thislevel+1]++;
+                    queue[back++] = w;    // put w on queue to explore
+                }
             }
+        }
+        thislevel = thislevel+1;
+    }
+    *nlevelsp = thislevel;
+    free(queue);
+}
+
+void process_layer(list<int> *in_bag, list<int> *out_bag, int d, int *level, int *parent){
+    
+    if(in_bag.size() < GRAINSIZE){
+        list<int>::iterator iter;
+        cilk_for (iter = in_bag.begin(); iter != in_bag.end(); iter++){
+            //if distance of v is -1, make v distance = d+1 and insert to out_bag
+            
+            
         }
         return;
     }
-    new_bag = in_bag.split();
+    list<int> new_bag;
+    new_bag.splice(new_bag.begin(), in_bag, in_bag.begin(), next( in_bag.begin(), in_bag.size()/2));
     cilk_spawn process_layer(new_bag, out_bag, d);
     process_layer(in_bag, out_bag, d);
     cilk_sync;
@@ -108,8 +154,6 @@ void process_layer(Bag *in_bag, Bag *out_bag, d){
 void pbfs(int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **parentp){
     
     int *level, *levelsize, *parent;
-    int thislevel;
-    vector<Bag> bags;
     int d = 0;
     level = *levelp = (int *) calloc(G->nv, sizeof(int));
     levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
@@ -119,21 +163,25 @@ void pbfs(int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **
     for (v = 0; v < G->nv; v++) parent[v] = -1;
     
     // assign the starting vertex level 0
-    thislevel = 0;
     level[s] = 0;
     levelsize[0] = 1;
     
-    Bag bag = new Bag();
-    bag.add(s);
-    bags.push_back(bag);
+    //store the vertices
+    list<int> frontier = new list<int>;
+    frontier.push_back(s);
+    bags.push_back(frontier);
+    
 
-    while(bags[d].getPennantVectorSize() > 0){
+    while(frontier.size() > 0){
         //reducer
-        Bag new_bag = new Bag();
-        bags.push_back(new_bag);
-        process_layer(bags[d], bags[d+1], d);
+        cilk::reducer< cilk::op_list_append<int> > new_frontier;
+        process_layer(frontier, new_frontier, d, level, parent);
+        frontier = new_frontier.get_value();
+        levelsize[d] = frontier.size();
         d++;
     }
+    
+    *nlevelsp = d;
     
 }
 

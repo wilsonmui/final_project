@@ -1,5 +1,5 @@
-parallel: Bag.cpp Pennant.cpp bagbfs.cpp
-	icc -o parallel Bag.cpp Pennant.cpp bagbfs.cpp
+parallel: Bag.hpp Pennant.hpp bagbfs.cpp
+	icc -o parallel Bag.hpp Pennant.hpp bagbfs.cpp
 
 clean:
 	rm parallel *~	
