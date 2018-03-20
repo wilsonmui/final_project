@@ -143,7 +143,7 @@ void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, in
     
     if(in_bag->size() < GRAINSIZE){
         cilk::reducer< cilk::op_list_append<int> > new_frontier;
-        cilk_for (list<int>::iterator iter=in_bag->begin(); iter != *in_bag.end(); ++iter){
+        cilk_for (list<int>::iterator iter=in_bag->begin(); iter != in_bag->end(); ++iter){
             //if distance of v is -1, make v distance = d+1 and insert to out_bag
             for(int e = G->firstnbr[*iter]; e < G->firstnbr[*iter+1]; e++){
                 int w = G->nbr[e];
@@ -158,7 +158,13 @@ void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, in
         return;
     }
     list<int> new_bag;
-    new_bag->splice(new_bag->begin(), in_bag, in_bag->begin(), advance( in_bag->begin(), in_bag->size()/2));
+    
+    list<int>::iterator it;
+    for(int i=0; i<in_bag->size()/2; i++){
+        it++;
+    }
+    new_bag.splice(new_bag.begin(), *in_bag, it, in_bag->end());
+    
     cilk_spawn process_layer(&new_bag, out_bag, d, level, parent, G);
     process_layer(in_bag, out_bag, d, level, parent, G);
     cilk_sync;
