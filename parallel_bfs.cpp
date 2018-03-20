@@ -30,7 +30,7 @@ int read_edge_list (int **tailp, int **headp) {
     nr = scanf("%i %i",&t,&h);
     while (nr == 2) {
         if (nedges >= max_edges) {
-            //printf("Limit of %d edges exceeded.\n",max_edges);
+            printf("Limit of %d edges exceeded.\n",max_edges);
             exit(1);
         }
         (*tailp)[nedges] = t;
@@ -79,17 +79,17 @@ void print_CSR_graph (graph *G) {
     int vlimit = 20;
     int elimit = 50;
     int e,v;
-    //printf("\nGraph has %d vertices and %d edges.\n",G->nv,G->ne);
-    //printf("firstnbr =");
+    printf("\nGraph has %d vertices and %d edges.\n",G->nv,G->ne);
+    printf("firstnbr =");
     if (G->nv < vlimit) vlimit = G->nv;
-    //for (int v = 0; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
-    //if (G->nv > vlimit) printf(" ...");
-    //printf("\n");
-    //printf("nbr =");
+    for (int v = 0; v <= vlimit; v++) printf(" %d",G->firstnbr[v]);
+    if (G->nv > vlimit) printf(" ...");
+    printf("\n");
+    printf("nbr =");
     if (G->ne < elimit) elimit = G->ne;
-    //for (int e = 0; e < elimit; e++) printf(" %d",G->nbr[e]);
-    //if (G->ne > elimit) printf(" ...");
-    //printf("\n\n");
+    for (int e = 0; e < elimit; e++) printf(" %d",G->nbr[e]);
+    if (G->ne > elimit) printf(" ...");
+    printf("\n\n");
 }
 
 /*
@@ -140,10 +140,13 @@ void bfs (int s, graph *G, int **levelp, int *nlevelsp,
 */
 
 void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, int *parent, graph *G){
-    
+
     if(in_bag->size() < GRAINSIZE){
         cilk::reducer< cilk::op_list_append<int> > new_frontier;
-        cilk_for (list<int>::iterator iter=in_bag->begin(); iter != in_bag->end(); ++iter){
+        
+        //cout << d+1 << endl;
+        
+        for (list<int>::iterator iter=in_bag->begin(); iter != in_bag->end(); ++iter){
             //if distance of v is -1, make v distance = d+1 and insert to out_bag
             for(int e = G->firstnbr[*iter]; e < G->firstnbr[*iter+1]; e++){
                 int w = G->nbr[e];
@@ -151,6 +154,7 @@ void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, in
                     parent[w] = *iter;
                     level[w] = d+1;
                     new_frontier->push_back(w);    // put w on queue to explore
+                    //cout << w << endl;
                 }
             }
         }
@@ -193,9 +197,9 @@ void pbfs(int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **
     while(frontier.size() > 0){
         //reducer
         list<int> new_frontier;
+        levelsize[d] = frontier.size();
         process_layer(&frontier, &new_frontier, d, level, parent, G);
         frontier = new_frontier;
-        levelsize[d] = frontier.size();
         d++;
     }
     
@@ -215,8 +219,8 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         startvtx = atoi (argv[1]);
     } else {
-        //printf("usage:   bagbfs <startvtx> < <edgelistfile>\n");
-        //printf("example: cat sample.txt | ./bfstest 1\n");
+        printf("usage:   bagbfs <startvtx> < <edgelistfile>\n");
+        printf("example: cat sample.txt | ./bfstest 1\n");
         exit(1);
     }
     nedges = read_edge_list (&tail, &head);
@@ -225,19 +229,19 @@ int main (int argc, char* argv[]) {
     free(head);
     print_CSR_graph (G);
     
-    //printf("Starting vertex for BFS is %d.\n\n",startvtx);
+    printf("Starting vertex for BFS is %d.\n\n",startvtx);
     pbfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
     
     reached = 0;
     for (int i = 0; i < nlevels; i++) reached += levelsize[i];
-    //printf("Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
-    //       startvtx, nlevels, reached);
-    //for (int i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
+    printf("Breadth-first search from vertex %d reached %d levels and %d vertices.\n",
+           startvtx, nlevels, reached);
+    for (int i = 0; i < nlevels; i++) printf("level %d vertices: %d\n", i, levelsize[i]);
     if (G->nv < 20) {
-    //    printf("\n  vertex parent  level\n");
-    //    for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
+        printf("\n  vertex parent  level\n");
+        for (v = 0; v < G->nv; v++) printf("%6d%7d%7d\n", v, parent[v], level[v]);
     }
-   // printf("\n");
+    printf("\n");
 }
 
 

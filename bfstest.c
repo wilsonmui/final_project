@@ -90,48 +90,50 @@ void print_CSR_graph (graph *G) {
 }
 
 
-void bfs (int s, graph *G, int **levelp, int *nlevelsp, 
-         int **levelsizep, int **parentp) {
-  int *level, *levelsize, *parent;
-  int thislevel;
-  int *queue, back, front;
-  int i, v, w, e;
-  level = *levelp = (int *) calloc(G->nv, sizeof(int));
-  levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
-  parent = *parentp = (int *) calloc(G->nv, sizeof(int));
-  queue = (int *) calloc(G->nv, sizeof(int));
-
-  // initially, queue is empty, all levels and parents are -1
-  back = 0;   // position next element will be added to queue
-  front = 0;  // position next element will be removed from queue
-  for (v = 0; v < G->nv; v++) level[v] = -1;
-  for (v = 0; v < G->nv; v++) parent[v] = -1;
-
-  // assign the starting vertex level 0 and put it on the queue to explore
-  thislevel = 0;
-  level[s] = 0;
-  levelsize[0] = 1;
-  queue[back++] = s;
-
-  // loop over levels, then over vertices at this level, then over neighbors
-  while (levelsize[thislevel] > 0) {
-    levelsize[thislevel+1] = 0;
-    for (i = 0; i < levelsize[thislevel]; i++) {
-      v = queue[front++];       // v is the current vertex to explore from
-      for (e = G->firstnbr[v]; e < G->firstnbr[v+1]; e++) {
-        w = G->nbr[e];          // w is the current neighbor of v
-        if (level[w] == -1) {   // w has not already been reached
-          parent[w] = v;
-          level[w] = thislevel+1;
-          levelsize[thislevel+1]++;
-          queue[back++] = w;    // put w on queue to explore
+void bfs (int s, graph *G, int **levelp, int *nlevelsp,
+          int **levelsizep, int **parentp) {
+    int *level, *levelsize, *parent;
+    int thislevel;
+    int *queue, back, front;
+    int i, v, w, e;
+    level = *levelp = (int *) calloc(G->nv, sizeof(int));
+    levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
+    parent = *parentp = (int *) calloc(G->nv, sizeof(int));
+    queue = (int *) calloc(G->nv, sizeof(int));
+    
+    // initially, queue is empty, all levels and parents are -1
+    back = 0;   // position next element will be added to queue
+    front = 0;  // position next element will be removed from queue
+    for (v = 0; v < G->nv; v++) level[v] = -1;
+    for (v = 0; v < G->nv; v++) parent[v] = -1;
+    
+    // assign the starting vertex level 0 and put it on the queue to explore
+    thislevel = 0;
+    level[s] = 0;
+    levelsize[0] = 1;
+    queue[back++] = s;
+    
+    // loop over levels, then over vertices at this level, then over neighbors
+    while (levelsize[thislevel] > 0) {
+        levelsize[thislevel+1] = 0;
+        for (i = 0; i < levelsize[thislevel]; i++) {
+            v = queue[front++];       // v is the current vertex to explore from
+            for (e = G->firstnbr[v]; e < G->firstnbr[v+1]; e++) {
+                w = G->nbr[e];          // w is the current neighbor of v
+                if (level[w] == -1) {   // w has not already been reached
+                    parent[w] = v;
+                    level[w] = thislevel+1;
+                    levelsize[thislevel+1]++;
+                    queue[back++] = w;    // put w on queue to explore
+                    printf("added: %d", w);
+                    printf("\n");
+                }
+            }
         }
-      }
+        thislevel = thislevel+1;
     }
-    thislevel = thislevel+1;
-  }
-  *nlevelsp = thislevel;
-  free(queue);
+    *nlevelsp = thislevel;
+    free(queue);
 }
 
 
