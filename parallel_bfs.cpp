@@ -9,6 +9,8 @@
 #include <cilk/reducer_list.h>
 #include <string>
 
+#include "example_util_gettime.h"
+
 using namespace std;
 
 const int GRAINSIZE = 100;
@@ -22,7 +24,7 @@ typedef struct graphstruct { // A graph in compressed-adjacency-list (CSR) form
 
 
 int read_edge_list (int **tailp, int **headp) {
-    int max_edges = 1000000;
+    int max_edges = 2000000;
     int nedges, nr, t, h;
     *tailp = (int *) calloc(max_edges, sizeof(int));
     *headp = (int *) calloc(max_edges, sizeof(int));
@@ -109,6 +111,7 @@ void process_layer( list<int> *in_bag, list<int> *out_bag, const int d, int *lev
             //if distance of v is -1, make v distance = d+1 and insert to out_bag
             for(int e = G->firstnbr[*iter]; e < G->firstnbr[*iter+1]; e++){
                 int w = G->nbr[e];
+                //disable the check to see if it is causing discrepancies
                 if (level[w] == -1) {   // w has not already been reached
                     parent[w] = *iter;
                     level[w] = d+1;
@@ -116,7 +119,7 @@ void process_layer( list<int> *in_bag, list<int> *out_bag, const int d, int *lev
                 }
             }
         }
-        
+
         out_bag->splice(out_bag->end(), new_frontier);
         return;
     }
@@ -191,7 +194,12 @@ int main (int argc, char* argv[]) {
     print_CSR_graph (G);
     
     printf("Starting vertex for BFS is %d.\n\n",startvtx);
+
+    long t1 = example_get_time();
     pbfs (startvtx, G, &level, &nlevels, &levelsize, &parent);
+    long t2 = example_get_time();
+    cout << "pbfs() time: " << t2 - t1 << endl;
+
     
     reached = 0;
     for (int i = 0; i < nlevels; i++) reached += levelsize[i];
