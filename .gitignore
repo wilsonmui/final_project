@@ -1,4 +1,6 @@
 BagTest
+bfstest
+parallel
 
 # Prerequisites
 *.d
