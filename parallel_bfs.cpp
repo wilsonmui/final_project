@@ -13,7 +13,7 @@
 
 using namespace std;
 
-const int GRAINSIZE = 100;
+int GRAINSIZE = 100;
 
 typedef struct graphstruct { // A graph in compressed-adjacency-list (CSR) form
     int nv;            // number of vertices
@@ -180,11 +180,12 @@ int main (int argc, char* argv[]) {
     int startvtx;
     int i, v, reached;
     
-    if (argc == 2) {
-        startvtx = atoi (argv[1]);
+    if (argc == 3) {
+        startvtx = atoi(argv[1]);
+        GRAINSIZE = atoi(argv[2]);
     } else {
-        printf("usage:   bagbfs <startvtx> < <edgelistfile>\n");
-        printf("example: cat sample.txt | ./bfstest 1\n");
+        printf("usage:   bagbfs <startvtx> <grainsize> < <edgelistfile>\n");
+        printf("example: cat sample.txt | ./bfstest 1 100\n");
         exit(1);
     }
     nedges = read_edge_list (&tail, &head);

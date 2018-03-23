@@ -1,0 +1,19 @@
+#!/bin/bash
+#PBS -q hotel
+#PBS -l nodes=1:ppn=8
+#PBS -N pbfs-with-rmat20
+#PBS -l walltime=00:10:00
+
+cd $PBS_O_WORKDIR
+
+./parallel 1 10 < rmat13.txt > result/ppn8_rmat13_grain10.txt
+./parallel 1 100 < rmat13.txt > result/ppn8_rmat13_grain100.txt
+./parallel 1 1000 < rmat13.txt > result/ppn8_rmat13_grain1000.txt
+./parallel 1 10000 < rmat13.txt > result/ppn8_rmat13_grain10000.txt
+./parallel 1 100000 < rmat13.txt > result/ppn8_rmat13_grain100000.txt
+
+./parallel 8 10 < rmat20.txt > result/ppn8_rmat20_grain10.txt
+./parallel 8 100 < rmat20.txt > result/ppn8_rmat20_grain100.txt
+./parallel 8 1000 < rmat20.txt > result/ppn8_rmat20_grain1000.txt
+./parallel 8 10000 < rmat20.txt > result/ppn8_rmat20_grain10000.txt
+./parallel 8 100000 < rmat20.txt > result/ppn8_rmat20_grain100000.txt
