@@ -58,10 +58,14 @@ graph * graph_from_edge_list (int *tail, int* head, int nedges) {
     G->firstnbr = (int *) calloc(G->nv+1, sizeof(int));
     
     // count neighbors of vertex v in firstnbr[v+1],
-    for (int e = 0; e < G->ne; e++) G->firstnbr[tail[e]+1]++;
+    for (int e = 0; e < G->ne; e++){
+        G->firstnbr[tail[e]+1]++;
+    }
     
     // cumulative sum of neighbors gives firstnbr[] values
-    for (int v = 0; v < G->nv; v++) G->firstnbr[v+1] += G->firstnbr[v];
+    for (int v = 0; v < G->nv; v++){
+        G->firstnbr[v+1] += G->firstnbr[v];
+    }
     
     // pass through edges, slotting each one into the CSR structure
     for (int e = 0; e < G->ne; e++) {
@@ -69,7 +73,9 @@ graph * graph_from_edge_list (int *tail, int* head, int nedges) {
         G->nbr[i] = head[e];
     }
     // the loop above shifted firstnbr[] left; shift it back right
-    for (int v = G->nv; v > 0; v--) G->firstnbr[v] = G->firstnbr[v-1];
+    for (int v = G->nv; v > 0; v--){
+        G->firstnbr[v] = G->firstnbr[v-1];
+    }
     G->firstnbr[0] = 0;
     return G;
 }
@@ -92,57 +98,10 @@ void print_CSR_graph (graph *G) {
     printf("\n\n");
 }
 
-/*
-//sequential bfs for reference
-void bfs (int s, graph *G, int **levelp, int *nlevelsp,
-          int **levelsizep, int **parentp) {
-    int *level, *levelsize, *parent;
-    int thislevel;
-    int *queue, back, front;
-    int i, v, w, e;
-    level = *levelp = (int *) calloc(G->nv, sizeof(int));
-    levelsize = *levelsizep = (int *) calloc(G->nv, sizeof(int));
-    parent = *parentp = (int *) calloc(G->nv, sizeof(int));
-    queue = (int *) calloc(G->nv, sizeof(int));
-    
-    // initially, queue is empty, all levels and parents are -1
-    back = 0;   // position next element will be added to queue
-    front = 0;  // position next element will be removed from queue
-    for (v = 0; v < G->nv; v++) level[v] = -1;
-    for (v = 0; v < G->nv; v++) parent[v] = -1;
-    
-    // assign the starting vertex level 0 and put it on the queue to explore
-    thislevel = 0;
-    level[s] = 0;
-    levelsize[0] = 1;
-    queue[back++] = s;
-    
-    // loop over levels, then over vertices at this level, then over neighbors
-    while (levelsize[thislevel] > 0) {
-        levelsize[thislevel+1] = 0;
-        for (i = 0; i < levelsize[thislevel]; i++) {
-            v = queue[front++];       // v is the current vertex to explore from
-            for (e = G->firstnbr[v]; e < G->firstnbr[v+1]; e++) {
-                w = G->nbr[e];          // w is the current neighbor of v
-                if (level[w] == -1) {   // w has not already been reached
-                    parent[w] = v;
-                    level[w] = thislevel+1;
-                    levelsize[thislevel+1]++;
-                    queue[back++] = w;    // put w on queue to explore
-                }
-            }
-        }
-        thislevel = thislevel+1;
-    }
-    *nlevelsp = thislevel;
-    free(queue);
-}
-*/
-
-void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, int *parent, graph *G){
+void process_layer( list<int> *in_bag, list<int> *out_bag, const int d, int *level, int *parent, graph *G){
 
     if(in_bag->size() < GRAINSIZE){
-        cilk::reducer< cilk::op_list_append<int> > new_frontier;
+        list<int> new_frontier;
         
         //cout << d+1 << endl;
         
@@ -153,21 +112,22 @@ void process_layer( list<int> *in_bag, list<int> *out_bag, int d, int *level, in
                 if (level[w] == -1) {   // w has not already been reached
                     parent[w] = *iter;
                     level[w] = d+1;
-                    new_frontier->push_back(w);    // put w on queue to explore
-                    //cout << w << endl;
+                    new_frontier.push_back(w);    // put w on queue to explore
                 }
             }
         }
-        *out_bag = new_frontier.get_value();
+        
+        out_bag->splice(out_bag->end(), new_frontier);
         return;
     }
+
     list<int> new_bag;
     
-    list<int>::iterator it;
+    list<int>::iterator middleOfInBag = in_bag->begin();
     for(int i=0; i<in_bag->size()/2; i++){
-        it++;
+        middleOfInBag++;
     }
-    new_bag.splice(new_bag.begin(), *in_bag, it, in_bag->end());
+    new_bag.splice(new_bag.begin(), *in_bag, middleOfInBag, in_bag->end());
     
     cilk_spawn process_layer(&new_bag, out_bag, d, level, parent, G);
     process_layer(in_bag, out_bag, d, level, parent, G);
@@ -195,6 +155,7 @@ void pbfs(int s, graph *G, int **levelp, int *nlevelsp, int **levelsizep, int **
     
 
     while(frontier.size() > 0){
+        cout << "pbfs(): processing frontier " << d << " with size " << frontier.size() << "..." << endl;
         //reducer
         list<int> new_frontier;
         levelsize[d] = frontier.size();
